@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────────────────────
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  rollNo     String   @unique
+  email      String   @unique
+  password   String
+  phone      String?
+  domain     String
+  isVerified Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  rides            Ride[]
+  sentRequests     Request[]      @relation("RequesterRequests")
+  receivedRequests Request[]      @relation("RideOwnerRequests")
+  messages         Message[]
+  refreshTokens    RefreshToken[]
+
+  @@index([domain])
+  @@index([email])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RIDE
+// ─────────────────────────────────────────────────────────────────────────────
+model Ride {
+  id             String   @id @default(uuid())
+  from           String
+  to             String
+  date           DateTime
+  time           String   // HH:MM 24-hr stored as string for easy display
+  vehicleType    String
+  availableSeats Int
+  isFull         Boolean  @default(false)
+  isExpired      Boolean  @default(false)
+  domain         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  requests    Request[]
+
+  @@index([domain, date])
+  @@index([createdById])
+  @@map("rides")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REQUEST
+// ─────────────────────────────────────────────────────────────────────────────
+model Request {
+  id                      String        @id @default(uuid())
+  status                  RequestStatus @default(PENDING)
+  phoneShared             Boolean       @default(false)
+  creatorPhoneConfirmed   Boolean       @default(false)
+  requesterPhoneConfirmed Boolean       @default(false)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  rideId String
+  ride   Ride   @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  requesterId String
+  requester   User   @relation("RequesterRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  rideCreatorId String?
+  rideCreator   User?  @relation("RideOwnerRequests", fields: [rideCreatorId], references: [id])
+
+  chat Chat?
+
+  @@unique([rideId, requesterId])
+  @@index([requesterId])
+  @@index([rideCreatorId])
+  @@map("requests")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHAT & MESSAGE
+// ─────────────────────────────────────────────────────────────────────────────
+model Chat {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+
+  requestId String   @unique
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+  @@map("chats")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OTP  (raw OTP rows — deleted on verify)
+// ─────────────────────────────────────────────────────────────────────────────
+model OTP {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("otps")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VERIFIED EMAIL  (proof that this email passed OTP — deleted after register)
+// Prevents registration without OTP verification.
+// ─────────────────────────────────────────────────────────────────────────────
+model VerifiedEmail {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  verifiedAt DateTime @default(now())
+  expiresAt  DateTime // 30-minute window to complete registration
+
+  @@index([email])
+  @@map("verified_emails")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REFRESH TOKEN  (server-side revocation support)
+// ─────────────────────────────────────────────────────────────────────────────
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}

@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: #FFF8E7;
+    color: #1C1C1C;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+}
+
+@layer components {
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-lg
+           transition-all duration-200 shadow-btn hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
+           cursor-pointer select-none;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-white font-semibold px-6 py-3
+           rounded-lg transition-all duration-200 cursor-pointer;
+  }
+
+  /* ── Inputs ── */
+  .input-field {
+    @apply w-full px-4 py-3 bg-white border border-gray-200 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary
+           transition-all duration-200 font-body placeholder-gray-400 text-charcoal;
+  }
+
+  /* Cream input — used on register/signup form */
+  .input-field-cream {
+    @apply w-full px-4 py-3.5 bg-amber-50/60 border border-primary/30 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary
+           transition-all duration-200 font-body placeholder-gray-500 text-charcoal;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300;
+  }
+
+  .ride-card {
+    @apply bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover
+           transition-all duration-300 border border-gray-100;
+  }
+
+  /* ── Navigation ── */
+  .nav-link {
+    @apply text-charcoal hover:text-primary font-medium transition-colors duration-200;
+  }
+
+  .nav-link-active {
+    @apply text-primary font-semibold;
+  }
+
+  /* ── Info pairs (ride cards) ── */
+  .label-text {
+    @apply text-xs text-muted uppercase tracking-wide font-medium;
+  }
+
+  .value-text {
+    @apply text-sm font-semibold text-charcoal mt-0.5;
+  }
+
+  /* ── Page hero sections ── */
+  .page-hero {
+    @apply relative overflow-hidden;
+    background: linear-gradient(135deg, #FFF8E7 0%, #FEF3C7 60%, #FDE68A 100%);
+  }
+}
+
+/* ── Info pair layout ── */
+.info-pair {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #FFF8E7; }
+::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 99px; }
+
+/* ── Chat bubbles ── */
+.chat-bubble-right {
+  background: #F59E0B;
+  color: white;
+  border-radius: 18px 18px 4px 18px;
+  padding: 10px 16px;
+  max-width: 75%;
+}
+
+.chat-bubble-left {
+  background: #ffffff;
+  color: #1C1C1C;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px 18px 18px 4px;
+  padding: 10px 16px;
+  max-width: 75%;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(110px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.55s ease forwards;
+  opacity: 0;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.4s ease forwards;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  animation: slideInRight 0.3s ease;
+}
