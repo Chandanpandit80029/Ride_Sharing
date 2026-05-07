@@ -31,14 +31,19 @@ const indianPhoneField = z
 /**
  * POST /auth/send-otp
  */
+// const sendOTPSchema = z.object({
+//   email: emailField,
+//   name : z
+//     .string({ required_error: 'Name is required' })
+//     .min(2, 'Name must be at least 2 characters')
+//     .max(50, 'Name must not exceed 50 characters')
+//     .trim(),
+// });
+
 const sendOTPSchema = z.object({
   email: emailField,
-  name : z
-    .string({ required_error: 'Name is required' })
-    .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name must not exceed 50 characters')
-    .trim(),
 });
+
 
 /**
  * POST /auth/verify-otp
