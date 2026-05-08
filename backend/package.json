@@ -4,15 +4,18 @@
   "description": "Closed-community ride-sharing platform for NIT Kurukshetra",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:migrate:prod": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:reset": "prisma migrate reset --force",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
+
+
+  
   "dependencies": {
     "@prisma/client": "^5.10.0",
     "bcryptjs": "^2.4.3",
