@@ -142,12 +142,12 @@ const resetPasswordSchema = z
     email          : emailField,
     otp            : otpField,
     newPassword    : passwordField,
-    confirmPassword: z.string({ required_error: 'Please confirm your new password' }),
+    // confirmPassword: z.string({ required_error: 'Please confirm your new password' }),
   })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path   : ['confirmPassword'],
-  });
+  // .refine((data) => data.newPassword === data.confirmPassword, {
+  //   message: 'Passwords do not match',
+  //   path   : ['confirmPassword'],
+  // });
 
 module.exports = {
   sendOTPSchema,

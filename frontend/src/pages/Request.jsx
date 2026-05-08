@@ -110,8 +110,8 @@ export default function Request() {
       setLoading(true)
       const res = await requestsAPI.getAll()
       const d = res.data.data || res.data
-      setIncoming(d.incoming || [])
-      setOutgoing(d.outgoing || [])
+      setIncoming(d.received || [])
+      setOutgoing(d.sent || [])
     } catch {
       toast.error('Failed to load requests')
     } finally {
@@ -121,7 +121,7 @@ export default function Request() {
 
   const handleAccept = async (id) => {
     try {
-      await requestsAPI.updateStatus(id, 'accepted')
+      await requestsAPI.updateStatus(id, 'ACCEPTED')
       toast.success('Request accepted!')
       fetchAll()
     } catch (err) {
@@ -131,7 +131,7 @@ export default function Request() {
 
   const handleReject = async (id) => {
     try {
-      await requestsAPI.updateStatus(id, 'rejected')
+      await requestsAPI.updateStatus(id, 'REJECTED')
       toast.info('Request rejected')
       fetchAll()
     } catch (err) {

@@ -19,9 +19,35 @@ function ChatBubble({ msg, isMe }) {
   )
 }
 
-function ConversationItem({ req, active, onClick }) {
+// function ConversationItem({ req, active, onClick }) {
+//   const ride = req.ride
+//   const other = req.requester || req.rideCreator
+//   return (
+//     <button
+//       onClick={onClick}
+//       className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+//         active ? 'bg-amber-100 border border-amber-200' : 'hover:bg-amber-50'
+//       }`}
+//     >
+//       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0 text-sm">
+//         {other?.name?.[0] || '?'}
+//       </div>
+//       <div className="min-w-0">
+//         <p className="font-semibold text-sm text-charcoal truncate">{other?.name || 'Unknown'}</p>
+//         <p className="text-xs text-muted truncate">{ride?.from} → {ride?.to}</p>
+//       </div>
+//     </button>
+//   )
+// }
+
+function ConversationItem({ req, active, onClick, currentUser }) {
   const ride = req.ride
-  const other = req.requester || req.rideCreator
+
+  const other =
+    req.requester?.id === currentUser?.id
+      ? req.rideCreator
+      : req.requester
+
   return (
     <button
       onClick={onClick}
@@ -32,9 +58,15 @@ function ConversationItem({ req, active, onClick }) {
       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0 text-sm">
         {other?.name?.[0] || '?'}
       </div>
+
       <div className="min-w-0">
-        <p className="font-semibold text-sm text-charcoal truncate">{other?.name || 'Unknown'}</p>
-        <p className="text-xs text-muted truncate">{ride?.from} → {ride?.to}</p>
+        <p className="font-semibold text-sm text-charcoal truncate">
+          {other?.name || 'Unknown'}
+        </p>
+
+        <p className="text-xs text-muted truncate">
+          {ride?.from} → {ride?.to}
+        </p>
       </div>
     </button>
   )
@@ -61,8 +93,12 @@ export default function Chat() {
     return () => {
       try {
         const sock = getSocket()
-        sock.emit('leave-chat', `chat_${activeReqId}`)
-        sock.off('new-message')
+        // sock.emit('leave_chat', `chat_${activeReqId}`)
+        // sock.off('new_message')
+
+        sock.emit('leave_chat', { requestId: activeReqId })
+        sock.off('new_message')
+
       } catch {}
     }
   }, [activeReqId])
@@ -76,8 +112,8 @@ export default function Chat() {
       setLoading(true)
       const res = await requestsAPI.getAll()
       const d = res.data.data || res.data
-      const inc = d.incoming || []
-      const out = d.outgoing || []
+      const inc = d.received || []
+      const out = d.sent || []
       const accepted = [
         ...inc.filter(r => r.status === 'ACCEPTED' || r.status === 'accepted'),
         ...out.filter(r => r.status === 'ACCEPTED' || r.status === 'accepted'),
@@ -106,33 +142,76 @@ export default function Chat() {
     }
   }
 
+  // const setupSocket = useCallback((requestId) => {
+  //   try {
+  //     const sock = getSocket()
+  //     sock.emit('join_chat', `chat_${requestId}`)
+  //     sock.off('new_message')
+  //     sock.on('new_message', (msg) => {
+  //       setMessages(prev => [...prev, msg])
+  //     })
+  //   } catch {}
+  // }, [])
+
   const setupSocket = useCallback((requestId) => {
-    try {
-      const sock = getSocket()
-      sock.emit('join-chat', `chat_${requestId}`)
-      sock.off('new-message')
-      sock.on('new-message', (msg) => {
-        setMessages(prev => [...prev, msg])
+  try {
+    const sock = getSocket()
+
+    sock.emit('join_chat', { requestId })
+
+    sock.off('new_message')
+
+    sock.on('new_message', (msg) => {
+      setMessages(prev => {
+        const exists = prev.some(m => m.id === msg.id)
+        if (exists) return prev
+        return [...prev, msg]
       })
-    } catch {}
-  }, [])
+    })
+  } catch (error) {
+    console.error('Socket setup failed:', error)
+  }
+}, [])
+
+  // const handleSend = async (e) => {
+  //   e.preventDefault()
+  //   if (!newMsg.trim() || !activeReqId) return
+  //   try {
+  //     setSending(true)
+  //     const res = await chatAPI.sendMessage(activeReqId, newMsg.trim())
+  //     const d = res.data.data || res.data
+  //     // Optimistically add or wait for socket
+  //     setMessages(prev => [...prev, d.message || { text: newMsg.trim(), senderId: user?.id, createdAt: new Date() }])
+  //     setNewMsg('')
+  //   } catch {
+  //     toast.error('Failed to send message')
+  //   } finally {
+  //     setSending(false)
+  //   }
+  // }
 
   const handleSend = async (e) => {
-    e.preventDefault()
-    if (!newMsg.trim() || !activeReqId) return
-    try {
-      setSending(true)
-      const res = await chatAPI.sendMessage(activeReqId, newMsg.trim())
-      const d = res.data.data || res.data
-      // Optimistically add or wait for socket
-      setMessages(prev => [...prev, d.message || { text: newMsg.trim(), senderId: user?.id, createdAt: new Date() }])
-      setNewMsg('')
-    } catch {
-      toast.error('Failed to send message')
-    } finally {
-      setSending(false)
-    }
+  e.preventDefault()
+
+  if (!newMsg.trim() || !activeReqId) return
+
+  try {
+    setSending(true)
+
+    const sock = getSocket()
+
+    sock.emit('send_message', {
+      requestId: activeReqId,
+      text: newMsg.trim(),
+    })
+
+    setNewMsg('')
+  } catch {
+    toast.error('Failed to send message')
+  } finally {
+    setSending(false)
   }
+}
 
   const activeReq = acceptedRequests.find(r => r.id === activeReqId)
 
