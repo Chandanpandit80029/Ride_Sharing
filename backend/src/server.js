@@ -92,7 +92,9 @@ app.get('/', (req, res) => {
 app.head('/', (req, res) => {
   res.sendStatus(200);
 });
-
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
 
 // ─── 404 + Error handler ──────────────────────────────────────────────────────
 app.use(notFound);
