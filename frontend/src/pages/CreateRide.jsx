@@ -75,15 +75,7 @@ export default function CreateRide() {
           {/* Form card — matches Figma */}
           <div className="max-w-lg bg-white/85 backdrop-blur-sm rounded-2xl shadow-card border border-amber-100 p-8">
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                name="to"
-                type="text"
-                placeholder="To"
-                value={form.to}
-                onChange={handleChange}
-                className={inputCls}
-                required
-              />
+              
               <input
                 name="from"
                 type="text"
@@ -93,6 +85,17 @@ export default function CreateRide() {
                 className={inputCls}
                 required
               />
+
+              <input
+                name="to"
+                type="text"
+                placeholder="To"
+                value={form.to}
+                onChange={handleChange}
+                className={inputCls}
+                required
+              />
+
               <input
                 name="date"
                 type="date"
@@ -120,12 +123,12 @@ export default function CreateRide() {
                 className={inputCls}
               >
                 <option value="">Type of vehicle</option>
-                <option value="car">Car</option>
-                <option value="bike">Bike</option>
-                <option value="auto">Auto</option>
-                <option value="cab">Cab</option>
-                <option value="bus">Bus</option>
-                <option value="other">Other</option>
+                <option value="Car">Car</option>
+                <option value="Bike">Bike</option>
+                <option value="Auto">Auto</option>
+                <option value="Cab">Cab</option>
+                <option value="Bus">Bus</option>
+                <option value="Other">Other</option>
               </select>
               <input
                 name="availableSeats"
@@ -135,7 +138,7 @@ export default function CreateRide() {
                 onChange={handleChange}
                 className={inputCls}
                 min={1}
-                max={10}
+                max={4}
                 required
               />
 

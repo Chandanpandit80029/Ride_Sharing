@@ -57,24 +57,47 @@ const verifyOTPSchema = z.object({
  * POST /auth/register
  * Note: OTP must have been verified first (enforced in service layer via VerifiedEmail table).
  */
-const registerSchema = z
-  .object({
-    name           : z.string({ required_error: 'Name is required' }).min(2).max(50).trim(),
-    rollNo         : z
-      .string({ required_error: 'Roll number is required' })
-      .min(3, 'Roll number must be at least 3 characters')
-      .max(20, 'Roll number must not exceed 20 characters')
-      .trim()
-      .toUpperCase(),
-    email          : emailField,
-    phone          : indianPhoneField,
-    password       : passwordField,
-    confirmPassword: z.string({ required_error: 'Please confirm your password' }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path   : ['confirmPassword'],
-  });
+// const registerSchema = z
+//   .object({
+//     name           : z.string({ required_error: 'Name is required' }).min(2).max(50).trim(),
+//     rollNo         : z
+//       .string({ required_error: 'Roll number is required' })
+//       .min(3, 'Roll number must be at least 3 characters')
+//       .max(20, 'Roll number must not exceed 20 characters')
+//       .trim()
+//       .toUpperCase(),
+//     email          : emailField,
+//     phone          : indianPhoneField,
+//     password       : passwordField,
+//     confirmPassword: z.string({ required_error: 'Please confirm your password' }),
+//   })
+//   .refine((data) => data.password === data.confirmPassword, {
+//     message: 'Passwords do not match',
+//     path   : ['confirmPassword'],
+//   });
+
+
+const registerSchema = z.object({
+  name: z
+    .string({ required_error: 'Name is required' })
+    .min(2)
+    .max(50)
+    .trim(),
+
+  rollNo: z
+    .string({ required_error: 'Roll number is required' })
+    .min(3, 'Roll number must be at least 3 characters')
+    .max(20, 'Roll number must not exceed 20 characters')
+    .trim()
+    .toUpperCase(),
+
+  email: emailField,
+
+  phone: indianPhoneField,
+
+  password: passwordField,
+});
+
 
 /**
  * POST /auth/login
