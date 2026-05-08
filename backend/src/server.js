@@ -81,6 +81,19 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/chats',    chatRoutes);
 app.use('/api/profile',  profileRoutes);
 
+
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'RideShare backend is running',
+  });
+});
+
+app.head('/', (req, res) => {
+  res.sendStatus(200);
+});
+
+
 // ─── 404 + Error handler ──────────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
