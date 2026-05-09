@@ -79,36 +79,20 @@
 //   return { success: false, error: 'No email provider configured' };
 // };
 
-const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
-
-const FROM = process.env.EMAIL_FROM || 'RideShare <onboarding@resend.dev>';
+const FROM = process.env.EMAIL_FROM || 'RideShare <chapri3110@gmail.com>';
 
 let _smtpTransport = null;
 
 const getSmtpTransport = () => {
   if (!_smtpTransport) {
-    console.log('SMTP CONFIG:', {
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      user: process.env.SMTP_USER,
-      hasPass: !!process.env.SMTP_PASS,
-      from: FROM,
-    });
-
     _smtpTransport = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
       port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
       requireTLS: true,
-
-      // Important for Render
       family: 4,
-
       connectionTimeout: 60000,
       greetingTimeout: 60000,
       socketTimeout: 60000,
@@ -123,40 +107,72 @@ const getSmtpTransport = () => {
   return _smtpTransport;
 };
 
+const parseFrom = (from) => {
+  const match = from.match(/^(.*?)\s*<(.+)>$/);
+
+  if (match) {
+    return {
+      name: match[1].trim(),
+      email: match[2].trim(),
+    };
+  }
+
+  return {
+    name: 'RideShare',
+    email: from,
+  };
+};
+
 const sendEmail = async ({ to, subject, html }) => {
   const recipient = Array.isArray(to) ? to : [to];
 
   console.log('📨 Sending email to:', recipient);
 
-  // Try Resend first, only if key exists
-  if (resend) {
+  // Brevo HTTP API first
+  if (process.env.BREVO_API_KEY) {
     try {
-      console.log('🚀 Trying Resend...');
+      console.log('🚀 Trying Brevo API...');
 
-      const { data, error } = await resend.emails.send({
-        from: FROM,
-        to: recipient,
-        subject,
-        html,
+      const sender = parseFrom(FROM);
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'api-key': process.env.BREVO_API_KEY,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender,
+          to: recipient.map((email) => ({ email })),
+          subject,
+          htmlContent: html,
+        }),
       });
 
-      if (error) {
-        console.error('❌ [Resend] Error:', error);
-        throw new Error(error.message || 'Resend failed');
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ Brevo API failed:', data);
+        return {
+          success: false,
+          provider: 'brevo-api',
+          error: data.message || 'Brevo API failed',
+        };
       }
 
-      console.log(`✅ [Resend] Email sent to ${recipient.join(', ')}:`, data?.id);
+      console.log('✅ Brevo API email sent:', data.messageId);
 
       return {
         success: true,
-        provider: 'resend',
-        id: data?.id,
+        provider: 'brevo-api',
+        id: data.messageId,
       };
     } catch (err) {
-      console.warn('⚠️ Resend failed, trying SMTP fallback:', err.message);
+      console.error('❌ Brevo API error:', err.message);
     }
   } else {
-    console.warn('⚠️ RESEND_API_KEY missing, using SMTP fallback');
+    console.warn('⚠️ BREVO_API_KEY missing, trying SMTP fallback');
   }
 
   // SMTP fallback
@@ -173,7 +189,7 @@ const sendEmail = async ({ to, subject, html }) => {
         html,
       });
 
-      console.log(`✅ [SMTP] Email sent to ${recipient.join(', ')}:`, info.messageId);
+      console.log('✅ SMTP email sent:', info.messageId);
 
       return {
         success: true,
@@ -181,16 +197,15 @@ const sendEmail = async ({ to, subject, html }) => {
         id: info.messageId,
       };
     } catch (err) {
-      console.error('❌ SMTP fallback also failed:', err);
+      console.error('❌ SMTP fallback also failed:', err.message);
 
       return {
         success: false,
+        provider: 'smtp',
         error: err.message,
       };
     }
   }
-
-  console.error('❌ No email provider configured');
 
   return {
     success: false,
@@ -201,6 +216,7 @@ const sendEmail = async ({ to, subject, html }) => {
 module.exports = {
   sendEmail,
 };
+
 
 // ─── HTML Templates ────────────────────────────────────────────────────────────
 const baseStyle = `
