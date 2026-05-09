@@ -20,6 +20,9 @@ const prisma                      = require('./config/db');
 
 // ─── Express + HTTP server ────────────────────────────────────────────────────
 const app    = express();
+
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 
 // ─── Socket.io ────────────────────────────────────────────────────────────────
