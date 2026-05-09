@@ -150,7 +150,7 @@ export default function Register() {
               disabled={loading}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-semibold hover:text-primary-dark"
             >
-              verify
+              resend
             </button>
           </div>
 
