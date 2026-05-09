@@ -1,82 +1,205 @@
-const { Resend }    = require('resend');
-const nodemailer    = require('nodemailer');
+// const { Resend }    = require('resend');
+// const nodemailer    = require('nodemailer');
 
-// const resend = new Resend(process.env.RESEND_API_KEY);
+// // const resend = new Resend(process.env.RESEND_API_KEY);
+// const resend = process.env.RESEND_API_KEY
+//   ? new Resend(process.env.RESEND_API_KEY)
+//   : null;
+
+// // const FROM   = process.env.EMAIL_FROM || 'RideShare NIT KKR <noreply@nitkkr.ac.in>';
+// const FROM   = process.env.EMAIL_FROM || 'RideShare <onboarding@resend.dev>';
+
+// // ─── Nodemailer fallback transport ────────────────────────────────────────────
+// let _smtpTransport = null;
+// const getSmtpTransport = () => {
+//   if (!_smtpTransport) {
+//     _smtpTransport = nodemailer.createTransport({
+//       host  : process.env.SMTP_HOST || 'smtp.gmail.com',
+//       port  : parseInt(process.env.SMTP_PORT, 10) || 587,
+//       secure: false,
+//       auth  : {
+//         user: process.env.SMTP_USER,
+//         pass: process.env.SMTP_PASS,
+//       },
+//     });
+//   }
+//   return _smtpTransport;
+// };
+
+// // ─── Core send function (Resend → Nodemailer fallback) ─────────────────────────
+// const sendEmail = async ({ to, subject, html }) => {
+//   const recipient = Array.isArray(to) ? to : [to];
+
+//   // Try Resend first
+//   if (resend) {
+//     try {
+//       // const result = await resend.emails.send({
+//       //   from   : FROM,
+//       //   to     : recipient,
+//       //   subject,
+//       //   html,
+//       // });
+//       // console.log(`📧 [Resend] Email sent to ${recipient.join(', ')}:`, result.id);
+//       // return { success: true, provider: 'resend', id: result.id };
+
+//       const { data, error } = await resend.emails.send({
+//   from: FROM,
+//   to: recipient,
+//   subject,
+//   html,
+// });
+
+// if (error) {
+//   console.error('❌ [Resend] Error:', error);
+//   throw new Error(error.message || 'Resend failed');
+// }
+
+// console.log(`✅ [Resend] Email sent to ${recipient.join(', ')}:`, data?.id);
+// return { success: true, provider: 'resend', id: data?.id };
+
+//     } catch (err) {
+//       console.warn('⚠️  Resend failed, trying SMTP fallback:', err.message);
+//     }
+//   }
+
+//   // Fallback to Nodemailer SMTP
+//   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+//     try {
+//       const transport = getSmtpTransport();
+//       const info      = await transport.sendMail({ from: FROM, to: recipient.join(', '), subject, html });
+//       console.log(`📧 [SMTP] Email sent to ${recipient.join(', ')}:`, info.messageId);
+//       return { success: true, provider: 'smtp', id: info.messageId };
+//     } catch (err) {
+//       console.error('❌ SMTP fallback also failed:', err.message);
+//       return { success: false, error: err.message };
+//     }
+//   }
+
+//   console.error('❌ No email provider configured (RESEND_API_KEY or SMTP_USER/PASS required)');
+//   return { success: false, error: 'No email provider configured' };
+// };
+
+const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
+
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-// const FROM   = process.env.EMAIL_FROM || 'RideShare NIT KKR <noreply@nitkkr.ac.in>';
-const FROM   = process.env.EMAIL_FROM || 'RideShare <onboarding@resend.dev>';
+const FROM = process.env.EMAIL_FROM || 'RideShare <onboarding@resend.dev>';
 
-// ─── Nodemailer fallback transport ────────────────────────────────────────────
 let _smtpTransport = null;
+
 const getSmtpTransport = () => {
   if (!_smtpTransport) {
+    console.log('SMTP CONFIG:', {
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      user: process.env.SMTP_USER,
+      hasPass: !!process.env.SMTP_PASS,
+      from: FROM,
+    });
+
     _smtpTransport = nodemailer.createTransport({
-      host  : process.env.SMTP_HOST || 'smtp.gmail.com',
-      port  : parseInt(process.env.SMTP_PORT, 10) || 587,
+      host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+      port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
-      auth  : {
+      requireTLS: true,
+
+      // Important for Render
+      family: 4,
+
+      connectionTimeout: 60000,
+      greetingTimeout: 60000,
+      socketTimeout: 60000,
+
+      auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
     });
   }
+
   return _smtpTransport;
 };
 
-// ─── Core send function (Resend → Nodemailer fallback) ─────────────────────────
 const sendEmail = async ({ to, subject, html }) => {
   const recipient = Array.isArray(to) ? to : [to];
 
-  // Try Resend first
+  console.log('📨 Sending email to:', recipient);
+
+  // Try Resend first, only if key exists
   if (resend) {
     try {
-      // const result = await resend.emails.send({
-      //   from   : FROM,
-      //   to     : recipient,
-      //   subject,
-      //   html,
-      // });
-      // console.log(`📧 [Resend] Email sent to ${recipient.join(', ')}:`, result.id);
-      // return { success: true, provider: 'resend', id: result.id };
+      console.log('🚀 Trying Resend...');
 
       const { data, error } = await resend.emails.send({
-  from: FROM,
-  to: recipient,
-  subject,
-  html,
-});
+        from: FROM,
+        to: recipient,
+        subject,
+        html,
+      });
 
-if (error) {
-  console.error('❌ [Resend] Error:', error);
-  throw new Error(error.message || 'Resend failed');
-}
+      if (error) {
+        console.error('❌ [Resend] Error:', error);
+        throw new Error(error.message || 'Resend failed');
+      }
 
-console.log(`✅ [Resend] Email sent to ${recipient.join(', ')}:`, data?.id);
-return { success: true, provider: 'resend', id: data?.id };
+      console.log(`✅ [Resend] Email sent to ${recipient.join(', ')}:`, data?.id);
 
+      return {
+        success: true,
+        provider: 'resend',
+        id: data?.id,
+      };
     } catch (err) {
-      console.warn('⚠️  Resend failed, trying SMTP fallback:', err.message);
+      console.warn('⚠️ Resend failed, trying SMTP fallback:', err.message);
     }
+  } else {
+    console.warn('⚠️ RESEND_API_KEY missing, using SMTP fallback');
   }
 
-  // Fallback to Nodemailer SMTP
+  // SMTP fallback
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
+      console.log('📧 Trying SMTP fallback...');
+
       const transport = getSmtpTransport();
-      const info      = await transport.sendMail({ from: FROM, to: recipient.join(', '), subject, html });
-      console.log(`📧 [SMTP] Email sent to ${recipient.join(', ')}:`, info.messageId);
-      return { success: true, provider: 'smtp', id: info.messageId };
+
+      const info = await transport.sendMail({
+        from: FROM,
+        to: recipient.join(', '),
+        subject,
+        html,
+      });
+
+      console.log(`✅ [SMTP] Email sent to ${recipient.join(', ')}:`, info.messageId);
+
+      return {
+        success: true,
+        provider: 'smtp',
+        id: info.messageId,
+      };
     } catch (err) {
-      console.error('❌ SMTP fallback also failed:', err.message);
-      return { success: false, error: err.message };
+      console.error('❌ SMTP fallback also failed:', err);
+
+      return {
+        success: false,
+        error: err.message,
+      };
     }
   }
 
-  console.error('❌ No email provider configured (RESEND_API_KEY or SMTP_USER/PASS required)');
-  return { success: false, error: 'No email provider configured' };
+  console.error('❌ No email provider configured');
+
+  return {
+    success: false,
+    error: 'No email provider configured',
+  };
+};
+
+module.exports = {
+  sendEmail,
 };
 
 // ─── HTML Templates ────────────────────────────────────────────────────────────
