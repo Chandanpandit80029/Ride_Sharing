@@ -40,10 +40,19 @@ export function getSocket() {
     return socket
   }
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-  const socketUrl = apiUrl ? apiUrl.replace(/^http/, 'ws') : 'ws://localhost:5000'
+  const apiUrl = import.meta.env.VITE_API_URL || '/api'
+  const backendOrigin = (() => {
+    try {
+      return new URL(apiUrl, window.location.origin).origin
+    } catch {
+      return apiUrl.replace(/\/\/+$/, '')
+    }
+  })()
+ 
+  const socketUrl = backendOrigin.replace(/^http/, 'ws')
 
   socket = io(socketUrl, {
+    path: '/socket.io',
     auth: {
       token,
     },
