@@ -253,9 +253,9 @@ export default function Chat() {
                 <p className="text-sm mt-1">Accept a ride request to start chatting</p>
               </div>
             ) : (
-              <div className="flex h-[480px]">
+              <div className="flex flex-col md:flex-row h-[620px] md:h-[480px]">
                 {/* Sidebar */}
-                <div className="w-56 border-r border-gray-100 overflow-y-auto p-3 flex-shrink-0 bg-amber-50/30">
+                <div className="w-full md:w-56 border-b border-gray-100 md:border-b-0 md:border-r overflow-y-auto p-3 flex-shrink-0 bg-amber-50/30">
                   <p className="text-xs text-muted uppercase tracking-wider font-semibold px-2 mb-3">Chats</p>
                   {acceptedRequests.map(req => (
                     <ConversationItem

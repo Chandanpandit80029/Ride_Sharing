@@ -40,12 +40,15 @@ export function getSocket() {
     return socket
   }
 
-  socket = io('http://localhost:5000', {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const socketUrl = apiUrl ? apiUrl.replace(/^http/, 'ws') : 'ws://localhost:5000'
+
+  socket = io(socketUrl, {
     auth: {
       token,
     },
 
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
 
     reconnection: true,
     reconnectionAttempts: 5,
