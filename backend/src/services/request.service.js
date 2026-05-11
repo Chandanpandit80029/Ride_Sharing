@@ -85,6 +85,8 @@ const getRequests = async (userId) => {
             createdBy: { select: { id: true, name: true, rollNo: true, phone: true } },
           },
         },
+        requester: {select: {id: true, name: true, rollNo: true, email: true, phone: true}},
+        rideCreator: {select: {id: true, name: true, rollNo: true, phone: true}},
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -93,6 +95,7 @@ const getRequests = async (userId) => {
       include: {
         ride    : true,
         requester: { select: { id: true, name: true, rollNo: true, email: true, phone: true } },
+        rideCreator: { select: {id: true, name: true, rollNo: true, phone: true}},
       },
       orderBy: { createdAt: 'desc' },
     }),

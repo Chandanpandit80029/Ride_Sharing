@@ -4,7 +4,7 @@ import { chatAPI, requestsAPI } from '../services/api'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
 import { getSocket } from '../services/socket'
-import { format } from 'date-fns'
+import { format, addHours, isPast } from 'date-fns'
 
 function ChatBubble({ msg, isMe }) {
   return (
@@ -80,6 +80,10 @@ export default function Chat() {
   const [newMsg, setNewMsg] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [sharingPhone, setSharingPhone] = useState(false)
+  const [phoneShared, setPhoneShared] = useState(false)
+  const [otherUserPhone, setOtherUserPhone] = useState(null)
+  const [chatExpired, setChatExpired] = useState(false)
   const messagesEndRef = useRef(null)
   const { user } = useAuth()
   const toast = useToast()
@@ -90,6 +94,7 @@ export default function Chat() {
     if (!activeReqId) return
     fetchMessages(activeReqId)
     setupSocket(activeReqId)
+    checkChatExpiry(activeReqId)
     return () => {
       try {
         const sock = getSocket()
@@ -173,6 +178,39 @@ export default function Chat() {
   }
 }, [])
 
+  const checkChatExpiry = (requestId) => {
+    const req = acceptedRequests.find(r => r.id === requestId)
+    if (!req || !req.ride) return
+
+    const rideDateTime = new Date(`${req.ride.date}T${req.ride.time}`)
+    const chatExpiryTime = addHours(rideDateTime, 2)
+    const isExpired = isPast(chatExpiryTime)
+
+    setChatExpired(isExpired)
+    setPhoneShared(req.phoneShared || false)
+  }
+
+  const handlePhoneShare = async () => {
+    if (!activeReqId) return
+    try {
+      setSharingPhone(true)
+      const res = await requestsAPI.sharePhone(activeReqId)
+      const data = res.data.data || res.data
+
+      if (data.bothConfirmed && data.phones) {
+        setOtherUserPhone(data.phones)
+        setPhoneShared(true)
+        toast.success('Phone numbers shared!')
+      } else {
+        toast.info(data.message)
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to share phone')
+    } finally {
+      setSharingPhone(false)
+    }
+  }
+
   // const handleSend = async (e) => {
   //   e.preventDefault()
   //   if (!newMsg.trim() || !activeReqId) return
@@ -214,6 +252,18 @@ export default function Chat() {
 }
 
   const activeReq = acceptedRequests.find(r => r.id === activeReqId)
+
+  const getOtherParticipant = (req) => {
+    if (!req) return null
+    // If current user is the requester, show the ride creator
+    if (req.requester?.id === user?.id) {
+      return req.rideCreator || req.ride?.createdBy
+    }
+    // If current user is the ride creator, show the requester
+    return req.requester
+  }
+
+  const otherParticipant = getOtherParticipant(activeReq)
 
   return (
     <div>
@@ -263,6 +313,7 @@ export default function Chat() {
                       req={req}
                       active={activeReqId === req.id}
                       onClick={() => setActiveReqId(req.id)}
+                      currentUser={user}
                     />
                   ))}
                 </div>
@@ -272,12 +323,48 @@ export default function Chat() {
                   {/* Chat header */}
                   {activeReq && (
                     <div className="px-4 py-3 border-b border-gray-100 bg-amber-50/40">
-                      <p className="font-semibold text-sm text-charcoal">
-                        {activeReq.requester?.name || activeReq.rideCreator?.name || 'Partner'}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {activeReq.ride?.from} → {activeReq.ride?.to}
-                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="font-semibold text-sm text-charcoal">
+                            {otherParticipant?.name || 'Partner'}
+                          </p>
+                          <p className="text-xs text-muted">
+                            {activeReq.ride?.from} → {activeReq.ride?.to}
+                          </p>
+                        </div>
+                        {chatExpired && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                            Chat Expired
+                          </span>
+                        )}
+                      </div>
+                      {/* Phone Sharing UI */}
+                      {!chatExpired && (
+                        <div className="mt-2 flex flex-col gap-2">
+                          <label className="flex items-center gap-2 cursor-pointer text-sm">
+                            <input
+                              type="checkbox"
+                              checked={phoneShared}
+                              onChange={handlePhoneShare}
+                              disabled={sharingPhone}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                            <span className="text-gray-700">
+                              {sharingPhone ? 'Sharing...' : 'Share Phone Number'}
+                            </span>
+                          </label>
+                          {otherUserPhone && phoneShared && (
+                            <div className="bg-green-100 rounded p-2 space-y-1">
+                              <p className="text-xs text-green-700 font-semibold">
+                                📱 {otherUserPhone.creatorName}: {otherUserPhone.creatorPhone}
+                              </p>
+                              <p className="text-xs text-green-700 font-semibold">
+                                📱 {otherUserPhone.requesterName}: {otherUserPhone.requesterPhone}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -300,27 +387,33 @@ export default function Chat() {
                   </div>
 
                   {/* Input */}
-                  <form
-                    onSubmit={handleSend}
-                    className="p-3 border-t border-gray-100 flex gap-2 items-center"
-                  >
-                    <input
-                      type="text"
-                      value={newMsg}
-                      onChange={e => setNewMsg(e.target.value)}
-                      placeholder="Chatting ..."
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50/30 focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm font-body"
-                    />
-                    <button
-                      type="submit"
-                      disabled={sending || !newMsg.trim()}
-                      className="w-10 h-10 bg-primary hover:bg-primary-dark rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 flex-shrink-0"
+                  {chatExpired ? (
+                    <div className="p-4 border-t border-gray-100 bg-red-50 text-center text-sm text-red-600 font-medium">
+                      Chat window has expired (2 hours after ride time)
+                    </div>
+                  ) : (
+                    <form
+                      onSubmit={handleSend}
+                      className="p-3 border-t border-gray-100 flex gap-2 items-center"
                     >
-                      <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                      </svg>
-                    </button>
-                  </form>
+                      <input
+                        type="text"
+                        value={newMsg}
+                        onChange={e => setNewMsg(e.target.value)}
+                        placeholder="Chatting ..."
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50/30 focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm font-body"
+                      />
+                      <button
+                        type="submit"
+                        disabled={sending || !newMsg.trim()}
+                        className="w-10 h-10 bg-primary hover:bg-primary-dark rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 flex-shrink-0"
+                      >
+                        <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
+                          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
             )}

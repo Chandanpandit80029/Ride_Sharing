@@ -2,23 +2,54 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { requestsAPI } from '../services/api'
 import { useToast } from '../context/ToastContext'
-import { useState } from 'react'
-import { format } from 'date-fns'
+import { useState, useEffect } from 'react'
+import { format, addHours, isPast } from 'date-fns'
 
 export default function RideCard({ ride, showActions = true, onDelete }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
   const [requesting, setRequesting] = useState(false)
+  const [requestStatus, setRequestStatus] = useState(null)
+  const [chatExpired, setChatExpired] = useState(false)
 
   const isOwner = user?.id === ride.createdBy?.id
   const isFull = ride.availableSeats === 0
+
+  useEffect(() => {
+    if (user && !isOwner) {
+      fetchRequestStatus()
+    }
+  }, [user, ride.id, isOwner])
+
+  const fetchRequestStatus = async () => {
+    try {
+      const res = await requestsAPI.getAll()
+      const d = res.data.data || res.data
+      const sent = d.sent || []
+      
+      const userRequest = sent.find(req => req.rideId === ride.id)
+      if (userRequest) {
+        setRequestStatus(userRequest.status)
+        
+        // Check if chat is expired (2 hours after ride time)
+        if (userRequest.status === 'ACCEPTED') {
+          const rideDateTime = new Date(`${ride.date}T${ride.time}`)
+          const chatExpiryTime = addHours(rideDateTime, 2)
+          setChatExpired(isPast(chatExpiryTime))
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch request status:', err)
+    }
+  }
 
   const handleRequest = async () => {
     if (!user) { navigate('/login'); return }
     try {
       setRequesting(true)
       await requestsAPI.create(ride.id)
+      setRequestStatus('PENDING')
       toast.success('Ride request sent!')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send request')
@@ -29,7 +60,7 @@ export default function RideCard({ ride, showActions = true, onDelete }) {
 
   const handleChat = () => {
     if (!user) { navigate('/login'); return }
-    navigate('/chat')
+    navigate('/chat', { state: { requestId: requestStatus ? null : ride.id } })
   }
 
   const formattedDate = ride.date ? format(new Date(ride.date), 'dd/MM/yyyy') : 'N/A'
@@ -86,19 +117,45 @@ export default function RideCard({ ride, showActions = true, onDelete }) {
       <div className="px-5 pb-5 pt-2">
         {showActions && !isOwner && (
           <div className="flex gap-3">
-            <button
-              onClick={handleChat}
-              className="btn-primary flex-1 text-sm py-2.5"
-            >
-              Join Chat
-            </button>
-            <button
-              onClick={handleRequest}
-              disabled={isFull || requesting}
-              className="btn-primary flex-1 text-sm py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {requesting ? 'Sending...' : 'Request'}
-            </button>
+            {!requestStatus ? (
+              <button
+                onClick={handleRequest}
+                disabled={isFull || requesting}
+                className="btn-primary flex-1 text-sm py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {requesting ? 'Sending...' : 'REQUEST RIDE'}
+              </button>
+            ) : requestStatus === 'PENDING' ? (
+              <button
+                disabled
+                className="btn-primary flex-1 text-sm py-2.5 opacity-60 cursor-not-allowed"
+              >
+                REQUESTED
+              </button>
+            ) : requestStatus === 'ACCEPTED' ? (
+              chatExpired ? (
+                <button
+                  disabled
+                  className="btn-primary flex-1 text-sm py-2.5 opacity-60 cursor-not-allowed bg-red-500"
+                >
+                  CHAT EXPIRED
+                </button>
+              ) : (
+                <button
+                  onClick={handleChat}
+                  className="btn-primary flex-1 text-sm py-2.5"
+                >
+                  JOIN CHAT
+                </button>
+              )
+            ) : requestStatus === 'REJECTED' ? (
+              <button
+                disabled
+                className="btn-primary flex-1 text-sm py-2.5 opacity-60 cursor-not-allowed bg-red-500"
+              >
+                REJECTED
+              </button>
+            ) : null}
           </div>
         )}
 
