@@ -25,6 +25,7 @@ const protect = async (req, res, next) => {
         email     : true,
         rollNo    : true,
         phone     : true,
+        profilePic: true,
         domain    : true,
         isVerified: true,
       },

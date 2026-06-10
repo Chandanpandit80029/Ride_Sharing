@@ -100,8 +100,10 @@
   background: #F59E0B;
   color: white;
   border-radius: 18px 18px 4px 18px;
-  padding: 10px 16px;
-  max-width: 75%;
+  padding: 10px 14px;
+  max-width: 85%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .chat-bubble-left {
@@ -109,8 +111,23 @@
   color: #1C1C1C;
   border: 1px solid #e5e7eb;
   border-radius: 18px 18px 18px 4px;
-  padding: 10px 16px;
-  max-width: 75%;
+  padding: 10px 14px;
+  max-width: 85%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .chat-bubble-right,
+  .chat-bubble-left {
+    max-width: 90%;
+    padding: 8px 12px;
+  }
+  
+  .chat-bubble-right p,
+  .chat-bubble-left p {
+    font-size: 0.875rem;
+  }
 }
 
 /* ── Animations ── */

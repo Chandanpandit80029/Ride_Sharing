@@ -55,9 +55,17 @@ function ConversationItem({ req, active, onClick, currentUser }) {
         active ? 'bg-amber-100 border border-amber-200' : 'hover:bg-amber-50'
       }`}
     >
-      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0 text-sm">
-        {other?.name?.[0] || '?'}
-      </div>
+      {other?.profilePic ? (
+        <img
+          src={other.profilePic}
+          alt={other?.name || 'Avatar'}
+          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+        />
+      ) : (
+        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0 text-sm">
+          {other?.name?.[0] || '?'}
+        </div>
+      )}
 
       <div className="min-w-0">
         <p className="font-semibold text-sm text-charcoal truncate">
@@ -84,6 +92,8 @@ export default function Chat() {
   const [phoneShared, setPhoneShared] = useState(false)
   const [otherUserPhone, setOtherUserPhone] = useState(null)
   const [chatExpired, setChatExpired] = useState(false)
+  const [mobileMode, setMobileMode] = useState(location.state?.requestId ? 'chat' : 'list')
+  const [deletingChat, setDeletingChat] = useState(false)
   const messagesEndRef = useRef(null)
   const { user } = useAuth()
   const toast = useToast()
@@ -125,9 +135,14 @@ export default function Chat() {
       ]
       setAcceptedRequests(accepted)
       // Set first if no active, or navigate from request page
-      if (!activeReqId && accepted.length > 0) setActiveReqId(accepted[0].id)
+      if (!activeReqId && accepted.length > 0) {
+        setActiveReqId(accepted[0].id)
+      }
       if (location.state?.requestId && accepted.find(r => r.id === location.state.requestId)) {
         setActiveReqId(location.state.requestId)
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+          setMobileMode('chat')
+        }
       }
     } catch {
       toast.error('Failed to load chats')
@@ -211,6 +226,29 @@ export default function Chat() {
     }
   }
 
+  const handleDeleteChat = async () => {
+    if (!activeReqId) return
+    const confirm = window.confirm('Delete this chat and remove the request? This cannot be undone.')
+    if (!confirm) return
+    try {
+      setDeletingChat(true)
+      await requestsAPI.delete(activeReqId)
+      const remaining = acceptedRequests.filter(r => r.id !== activeReqId)
+      setAcceptedRequests(remaining)
+      setActiveReqId(remaining.length > 0 ? remaining[0].id : null)
+      if (remaining.length > 0) {
+        setMobileMode('chat')
+      } else {
+        setMobileMode('list')
+      }
+      toast.success('Chat deleted')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete chat')
+    } finally {
+      setDeletingChat(false)
+    }
+  }
+
   // const handleSend = async (e) => {
   //   e.preventDefault()
   //   if (!newMsg.trim() || !activeReqId) return
@@ -268,9 +306,9 @@ export default function Chat() {
   return (
     <div>
       {/* ── Hero ────────────────────────────────────────────────────── */}
-      <section className="page-hero relative overflow-hidden py-14 px-6">
+      <section className="page-hero relative overflow-hidden py-8 px-4 md:py-14 md:px-6">
         {/* Background illustration */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="hidden md:block absolute inset-0 pointer-events-none overflow-hidden">
           <svg viewBox="0 0 1200 500" className="absolute right-0 top-0 h-full w-2/3" fill="none">
             <circle cx="900" cy="160" r="75" fill="#6EE7B7" opacity="0.22"/>
             <rect x="580" y="310" width="360" height="105" rx="22" fill="#E8C87A" opacity="0.38"/>
@@ -285,58 +323,104 @@ export default function Chat() {
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10">
-          <h1 className="font-display text-4xl md:text-5xl font-bold text-charcoal leading-tight max-w-2xl">
-            Chat with your college mates, coordinate rides, and make your journey{' '}
-            <span className="text-primary">smooth and social.</span>
-          </h1>
+          <div className="hidden md:block">
+            <h1 className="font-display text-4xl md:text-5xl font-bold text-charcoal leading-tight max-w-2xl">
+              Chat with your college mates, coordinate rides, and make your journey{' '}
+              <span className="text-primary">smooth and social.</span>
+            </h1>
+          </div>
+          <div className="md:hidden mb-4">
+            <h1 className="text-2xl font-bold text-charcoal">Your Rideshare Chats</h1>
+            <p className="text-sm text-muted mt-1">Tap a chat to start messaging</p>
+          </div>
 
           {/* ── Chat UI ── */}
-          <div className="mt-10 max-w-2xl bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+          <div className="mt-6 w-full max-w-full md:max-w-4xl mx-auto bg-white rounded-3xl shadow-card border border-gray-100 overflow-hidden">
             {loading ? (
-              <div className="flex justify-center items-center h-64">
+              <div className="flex justify-center items-center h-96">
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             ) : acceptedRequests.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-muted">
+              <div className="flex flex-col items-center justify-center h-96 text-muted">
                 <div className="text-5xl mb-4">💬</div>
                 <p className="font-display text-lg text-charcoal">No conversations yet</p>
                 <p className="text-sm mt-1">Accept a ride request to start chatting</p>
               </div>
             ) : (
-              <div className="flex flex-col md:flex-row h-[620px] md:h-[480px]">
-                {/* Sidebar */}
-                <div className="w-full md:w-56 border-b border-gray-100 md:border-b-0 md:border-r overflow-y-auto p-3 flex-shrink-0 bg-amber-50/30">
-                  <p className="text-xs text-muted uppercase tracking-wider font-semibold px-2 mb-3">Chats</p>
+              <div className="flex flex-col md:flex-row min-h-[calc(100vh-220px)] md:h-[560px] md:max-h-[560px]">
+                {/* Sidebar / chat list */}
+                <div className={`w-full md:w-64 h-full border-b border-gray-100 md:border-b-0 md:border-r overflow-y-auto p-3 flex-shrink-0 bg-amber-50/95 shadow-none md:shadow-none ${mobileMode === 'list' ? 'block' : 'hidden md:block'}`}>
+                  <div className="flex items-center justify-between mb-3 md:hidden">
+                    <p className="text-sm font-semibold text-charcoal uppercase tracking-wide">Chats</p>
+                    <button
+                      onClick={() => setMobileMode('chat')}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="hidden md:block text-xs text-muted uppercase tracking-wider font-semibold px-2 mb-3">Chats</p>
                   {acceptedRequests.map(req => (
                     <ConversationItem
                       key={req.id}
                       req={req}
                       active={activeReqId === req.id}
-                      onClick={() => setActiveReqId(req.id)}
+                      onClick={() => {
+                        setActiveReqId(req.id)
+                        setMobileMode('chat')
+                      }}
                       currentUser={user}
                     />
                   ))}
                 </div>
 
                 {/* Messages panel */}
-                <div className="flex-1 flex flex-col min-w-0">
+                <div className={`flex-1 flex flex-col min-w-0 relative md:z-10 ${mobileMode === 'list' ? 'hidden md:flex' : 'flex'}`}>
                   {/* Chat header */}
                   {activeReq && (
                     <div className="px-4 py-3 border-b border-gray-100 bg-amber-50/40">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-semibold text-sm text-charcoal">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                        <button 
+                          onClick={() => setMobileMode('list')}
+                          className="md:hidden inline-flex items-center gap-2 px-3 py-2 bg-white/90 border border-amber-200 rounded-lg shadow-sm text-sm font-semibold text-charcoal hover:bg-amber-100 transition-colors"
+                          title="View conversations"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                          </svg>
+                          Chats
+                        </button>
+                        {otherParticipant?.profilePic && (
+                          <img
+                            src={otherParticipant.profilePic}
+                            alt={otherParticipant?.name || 'Partner'}
+                            className="w-10 h-10 rounded-full object-cover shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-charcoal truncate">
                             {otherParticipant?.name || 'Partner'}
                           </p>
-                          <p className="text-xs text-muted">
+                          <p className="text-xs text-muted truncate">
                             {activeReq.ride?.from} → {activeReq.ride?.to}
                           </p>
                         </div>
-                        {chatExpired && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-                            Chat Expired
-                          </span>
-                        )}
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          {chatExpired && (
+                            <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded whitespace-nowrap">
+                              Expired
+                            </span>
+                          )}
+                          <button
+                            onClick={handleDeleteChat}
+                            disabled={deletingChat}
+                            className="inline-flex items-center gap-2 px-3 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors"
+                          >
+                            {deletingChat ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
                       </div>
                       {/* Phone Sharing UI */}
                       {!chatExpired && (
@@ -354,11 +438,11 @@ export default function Chat() {
                             </span>
                           </label>
                           {otherUserPhone && phoneShared && (
-                            <div className="bg-green-100 rounded p-2 space-y-1">
-                              <p className="text-xs text-green-700 font-semibold">
+                            <div className="bg-green-100 rounded p-2 space-y-1 break-words">
+                              <p className="text-xs text-green-700 font-semibold break-words">
                                 📱 {otherUserPhone.creatorName}: {otherUserPhone.creatorPhone}
                               </p>
-                              <p className="text-xs text-green-700 font-semibold">
+                              <p className="text-xs text-green-700 font-semibold break-words">
                                 📱 {otherUserPhone.requesterName}: {otherUserPhone.requesterPhone}
                               </p>
                             </div>
@@ -369,7 +453,10 @@ export default function Chat() {
                   )}
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                  <div
+                    className="flex-1 overflow-y-auto p-3 md:p-4 flex flex-col gap-2 md:gap-3 touch-pan-y max-h-full"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                  >
                     {messages.length === 0 ? (
                       <div className="flex-1 flex items-center justify-center text-muted text-sm">
                         Say hello! 👋
@@ -388,20 +475,34 @@ export default function Chat() {
 
                   {/* Input */}
                   {chatExpired ? (
-                    <div className="p-4 border-t border-gray-100 bg-red-50 text-center text-sm text-red-600 font-medium">
-                      Chat window has expired (2 hours after ride time)
+                    <div className="p-3 md:p-4 border-t border-gray-100 bg-red-50 text-center text-sm text-red-600 font-medium flex items-center justify-center gap-3">
+                      <span>Chat window has expired (2 hours after ride time)</span>
+                      <button
+                        onClick={handleDeleteChat}
+                        disabled={deletingChat}
+                        className="ml-2 inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60"
+                      >
+                        {deletingChat ? 'Deleting...' : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 3h4l1 4H9l1-4z" />
+                            </svg>
+                            Delete Chat
+                          </>
+                        )}
+                      </button>
                     </div>
                   ) : (
                     <form
                       onSubmit={handleSend}
-                      className="p-3 border-t border-gray-100 flex gap-2 items-center"
+                      className="p-3 md:p-4 border-t border-gray-100 flex gap-2 items-center"
                     >
                       <input
                         type="text"
                         value={newMsg}
                         onChange={e => setNewMsg(e.target.value)}
                         placeholder="Chatting ..."
-                        className="flex-1 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50/30 focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm font-body"
+                        className="flex-1 px-3 md:px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50/30 focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm font-body"
                       />
                       <button
                         type="submit"

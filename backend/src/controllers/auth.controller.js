@@ -26,7 +26,11 @@ const verifyOTP = async (req, res, next) => {
 
 const register = async (req, res, next) => {
   try {
-    const result = await registerService(req.body);
+    const registerPayload = {
+      ...req.body,
+      profilePic: req.file?.filename,
+    };
+    const result = await registerService(registerPayload);
     sendSuccess(res, 201, 'Account created successfully', result);
   } catch (e) { next(e); }
 };

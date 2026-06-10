@@ -3,7 +3,7 @@ const router  = express.Router();
 
 const {
   createRequestHandler, getRequestsHandler,
-  updateRequestHandler, sharePhoneHandler,
+  updateRequestHandler, sharePhoneHandler, deleteRequestHandler,
 } = require('../controllers/request.controller');
 const { protect }  = require('../middleware/auth.middleware');
 const { validate } = require('../middleware/validate.middleware');
@@ -15,5 +15,6 @@ router.post('/',                 validate(createRequestSchema), createRequestHan
 router.get('/',                  getRequestsHandler);
 router.patch('/:id',             validate(updateRequestSchema), updateRequestHandler);
 router.patch('/:id/share-phone', sharePhoneHandler);
+router.delete('/:id',            deleteRequestHandler);
 
 module.exports = router;

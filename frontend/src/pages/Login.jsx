@@ -59,6 +59,7 @@ export function AuthLayout({ children, title }) {
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const toast = useToast()
@@ -103,15 +104,34 @@ export default function Login() {
         </div>
         <div>
           <label className="block text-sm font-bold text-charcoal mb-2">Password</label>
-          <input
-            name="password"
-            type="password"
-            placeholder="Enter Password"
-            value={form.password}
-            onChange={handleChange}
-            className="input-field"
-            autoComplete="current-password"
-          />
+          <div className="relative">
+            <input
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Enter Password"
+              value={form.password}
+              onChange={handleChange}
+              className="input-field pr-10"
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(s => !s)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10a9.97 9.97 0 012.175-5.7M6.36 6.36A9.953 9.953 0 0112 5c5.523 0 10 4.477 10 10 0 1.29-.246 2.52-.696 3.66M3 3l18 18" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
         <button

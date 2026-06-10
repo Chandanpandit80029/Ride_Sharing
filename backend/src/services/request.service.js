@@ -45,7 +45,7 @@ const createRequest = async (requesterId, rideId, io = null) => {
     data   : { rideId, requesterId, rideCreatorId: ride.createdById },
     include: {
       ride    : true,
-      requester: { select: { id: true, name: true, email: true, rollNo: true } },
+      requester: { select: { id: true, name: true, email: true, rollNo: true, profilePic: true } },
     },
   });
 
@@ -82,11 +82,11 @@ const getRequests = async (userId) => {
       include: {
         ride: {
           include: {
-            createdBy: { select: { id: true, name: true, rollNo: true, phone: true } },
+            createdBy: { select: { id: true, name: true, rollNo: true, phone: true, profilePic: true } },
           },
         },
-        requester: {select: {id: true, name: true, rollNo: true, email: true, phone: true}},
-        rideCreator: {select: {id: true, name: true, rollNo: true, phone: true}},
+        requester: {select: {id: true, name: true, rollNo: true, email: true, phone: true, profilePic: true}},
+        rideCreator: {select: {id: true, name: true, rollNo: true, phone: true, profilePic: true}},
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -94,8 +94,8 @@ const getRequests = async (userId) => {
       where  : { rideCreatorId: userId },
       include: {
         ride    : true,
-        requester: { select: { id: true, name: true, rollNo: true, email: true, phone: true } },
-        rideCreator: { select: {id: true, name: true, rollNo: true, phone: true}},
+        requester: { select: { id: true, name: true, rollNo: true, email: true, phone: true, profilePic: true } },
+        rideCreator: { select: {id: true, name: true, rollNo: true, phone: true, profilePic: true}},
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -220,4 +220,31 @@ const sharePhone = async (requestId, userId) => {
   };
 };
 
-module.exports = { createRequest, getRequests, updateRequestStatus, sharePhone };
+// ─── Delete Request (and associated chat) ─────────────────────────────────
+const deleteRequest = async (requestId, userId) => {
+  const request = await prisma.request.findUnique({
+    where: { id: requestId },
+    include: { ride: true },
+  });
+
+  if (!request) throw appError('Request not found', 404);
+
+  // Only participants (requester or ride creator) can delete the request
+  if (request.requesterId !== userId && request.rideCreatorId !== userId) {
+    throw appError('Unauthorized to delete this request', 403);
+  }
+
+  // Remove chat messages and chat record if exists, then delete request
+  await prisma.$transaction(async (tx) => {
+    const chat = await tx.chat.findUnique({ where: { requestId } });
+    if (chat) {
+      await tx.message.deleteMany({ where: { chatId: chat.id } });
+      await tx.chat.delete({ where: { id: chat.id } });
+    }
+    await tx.request.delete({ where: { id: requestId } });
+  });
+
+  return { message: 'Request and chat deleted' };
+};
+
+module.exports = { createRequest, getRequests, updateRequestStatus, sharePhone, deleteRequest };

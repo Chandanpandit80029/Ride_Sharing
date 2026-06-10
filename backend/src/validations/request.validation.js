@@ -35,15 +35,16 @@ const sendMessageSchema = z.object({
  */
 const updateProfileSchema = z
   .object({
-    name : z.string().min(2, 'Name must be at least 2 characters').max(50).trim().optional(),
-    phone: z
+    name      : z.string().min(2, 'Name must be at least 2 characters').max(50).trim().optional(),
+    phone     : z
       .string()
       .regex(/^[6-9]\d{9}$/, 'Please provide a valid 10-digit Indian phone number')
       .optional()
       .nullable(),
+    profilePic: z.string().optional(),
   })
-  .refine((data) => data.name !== undefined || data.phone !== undefined, {
-    message: 'At least one field (name or phone) must be provided',
+  .refine((data) => data.name !== undefined || data.phone !== undefined || data.profilePic !== undefined, {
+    message: 'At least one profile field must be provided',
   });
 
 /**

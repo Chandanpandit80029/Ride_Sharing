@@ -14,6 +14,7 @@ const getProfile = async (req, res, next) => {
         rollNo    : true,
         email     : true,
         phone     : true,
+        profilePic: true,
         domain    : true,
         isVerified: true,
         createdAt : true,
@@ -34,15 +35,18 @@ const getProfile = async (req, res, next) => {
 // Zod validation happens in route via validate(updateProfileSchema)
 const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, profilePic } = req.body;
     const updateData = {};
     if (name  !== undefined) updateData.name  = name;
     if (phone !== undefined) updateData.phone = phone; // null clears it
+    if (profilePic !== undefined) {
+      updateData.profilePic = `/uploads/profile-pics/${profilePic}`;
+    }
 
     const user = await prisma.user.update({
       where : { id: req.user.id },
       data  : updateData,
-      select: { id: true, name: true, rollNo: true, email: true, phone: true, domain: true },
+      select: { id: true, name: true, rollNo: true, email: true, phone: true, profilePic: true, domain: true },
     });
     sendSuccess(res, 200, 'Profile updated successfully', { user });
   } catch (e) { next(e); }

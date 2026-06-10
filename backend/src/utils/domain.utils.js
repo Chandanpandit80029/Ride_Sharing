@@ -16,7 +16,7 @@ const isAllowedDomain = (email) => {
   const domain  = extractDomain(email);
   if (!domain)  return false;
 
-  const allowed = (process.env.ALLOWED_DOMAINS || 'nitkkr.ac.in')
+  const allowed = (process.env.ALLOWED_DOMAINS || 'nitkkr.ac.in' || 'gmail.com')
     .split(',')
     .map((d) => d.trim().toLowerCase());
 

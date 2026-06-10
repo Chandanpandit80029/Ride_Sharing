@@ -71,11 +71,25 @@ export default function Profile() {
   const [loadingRides, setLoadingRides] = useState(true)
   const [saving, setSaving] = useState(false)
   const [changingPwd, setChangingPwd] = useState(false)
+  const [profilePicFile, setProfilePicFile] = useState(null)
+  const [profilePicPreview, setProfilePicPreview] = useState('')
 
   useEffect(() => {
-    if (user) setForm({ name: user.name || '', phone: user.phone || '' })
+    if (user) {
+      setForm({ name: user.name || '', phone: user.phone || '' })
+      setProfilePicPreview(user.profilePic || '')
+      setProfilePicFile(null)
+    }
     fetchMyRides()
   }, [user])
+
+  useEffect(() => {
+    return () => {
+      if (profilePicFile && profilePicPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(profilePicPreview)
+      }
+    }
+  }, [profilePicFile, profilePicPreview])
 
   const fetchMyRides = async () => {
     try {
@@ -90,12 +104,27 @@ export default function Profile() {
     }
   }
 
+  const handleProfilePicChange = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const preview = URL.createObjectURL(file)
+    setProfilePicFile(file)
+    setProfilePicPreview(preview)
+  }
+
   const handleSave = async () => {
     try {
       setSaving(true)
-      const res = await profileAPI.update(form)
+      const formData = new FormData()
+      formData.append('name', form.name)
+      formData.append('phone', form.phone)
+      if (profilePicFile) formData.append('profilePic', profilePicFile)
+
+      const res = await profileAPI.update(formData)
       const d = res.data.data || res.data
       updateUser(d.user || d)
+      setProfilePicPreview(d.user?.profilePic || d.profilePic || profilePicPreview)
+      setProfilePicFile(null)
       toast.success('Profile updated!')
       setEditing(false)
     } catch (err) {
@@ -151,14 +180,18 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto px-6 py-14">
       {/* ── Profile Card ── */}
       <div className="card p-8 mb-10">
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col md:flex-row items-start gap-6">
           {/* Avatar */}
-          <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0 shadow-btn">
-            <span className="font-display text-3xl font-bold text-white">{initial}</span>
+          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-primary flex items-center justify-center flex-shrink-0 shadow-btn">
+            {profilePicPreview ? (
+              <img src={profilePicPreview} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <span className="font-display text-3xl font-bold text-white">{initial}</span>
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 {editing ? (
                   <input
@@ -176,22 +209,15 @@ export default function Profile() {
                 </p>
               </div>
 
-              <div className="flex gap-2 flex-shrink-0">
-                {editing ? (
-                  <>
-                    <button onClick={handleSave} disabled={saving} className="btn-primary text-sm py-2 px-4">
-                      {saving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button onClick={() => setEditing(false)} className="btn-outline text-sm py-2 px-4">
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => setEditing(true)} className="btn-outline text-sm py-2 px-4">
-                    Edit Profile
-                  </button>
-                )}
-              </div>
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="btn-outline text-sm py-2 px-4 self-start"
+                >
+                  Edit Profile
+                </button>
+              )}
             </div>
 
             {/* Phone */}
@@ -209,6 +235,39 @@ export default function Profile() {
                 <p className="value-text mt-1">{user?.phone || 'Not set'}</p>
               )}
             </div>
+
+            {editing && (
+              <>
+                <div className="mt-4">
+                  <label className="label-text">Profile Photo</label>
+                  <div className="mt-3 flex items-center gap-3">
+                    <label className="btn-outline text-sm py-2 px-4 cursor-pointer">
+                      Choose photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePicChange}
+                        className="hidden"
+                      />
+                    </label>
+                    {profilePicPreview ? (
+                      <span className="text-sm text-muted">Photo ready to upload</span>
+                    ) : (
+                      <span className="text-sm text-muted">No file selected</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-col sm:flex-row gap-2">
+                  <button onClick={handleSave} disabled={saving} className="btn-primary text-sm py-2 px-4 w-full sm:w-auto">
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button onClick={() => setEditing(false)} className="btn-outline text-sm py-2 px-4 w-full sm:w-auto">
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

@@ -11,6 +11,9 @@ const api = axios.create({
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('accessToken')
   if (token) config.headers.Authorization = `Bearer ${token}`
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+  }
   return config
 })
 
@@ -74,6 +77,7 @@ export const requestsAPI = {
   getAll: () => api.get('/requests'),
   updateStatus: (id, status) => api.patch(`/requests/${id}`, { status }),
   sharePhone: (id) => api.patch(`/requests/${id}/share-phone`),
+  delete: (id) => api.delete(`/requests/${id}`),
 }
 
 // Chat — backend routes: /chats/:requestId  /chats/:requestId/messages

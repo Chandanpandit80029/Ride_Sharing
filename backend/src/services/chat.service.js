@@ -36,7 +36,7 @@ const getMessages = async (requestId, userId, page = 1, limit = 50) => {
       skip,
       take   : limit,
       orderBy: { createdAt: 'asc' },
-      include: { sender: { select: { id: true, name: true, rollNo: true } } },
+      include: { sender: { select: { id: true, name: true, rollNo: true, profilePic: true } } },
     }),
     prisma.message.count({ where: { chatId: chat.id } }),
   ]);
@@ -54,7 +54,7 @@ const sendMessage = async (requestId, senderId, text) => {
 
   return prisma.message.create({
     data   : { chatId: chat.id, senderId, text: text.trim() },
-    include: { sender: { select: { id: true, name: true, rollNo: true } } },
+    include: { sender: { select: { id: true, name: true, rollNo: true, profilePic: true } } },
   });
 };
 

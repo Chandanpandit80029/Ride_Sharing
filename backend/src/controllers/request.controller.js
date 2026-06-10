@@ -3,6 +3,7 @@ const {
   getRequests,
   updateRequestStatus,
   sharePhone,
+  deleteRequest,
 } = require('../services/request.service');
 const { sendSuccess } = require('../utils/response.utils');
 
@@ -36,9 +37,17 @@ const sharePhoneHandler = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
+const deleteRequestHandler = async (req, res, next) => {
+  try {
+    const result = await deleteRequest(req.params.id, req.user.id);
+    sendSuccess(res, 200, result.message, result);
+  } catch (e) { next(e); }
+};
+
 module.exports = {
   createRequestHandler,
   getRequestsHandler,
   updateRequestHandler,
   sharePhoneHandler,
+  deleteRequestHandler,
 };

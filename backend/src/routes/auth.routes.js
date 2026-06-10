@@ -1,4 +1,7 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const router  = express.Router();
 
 const {
@@ -13,10 +16,30 @@ const {
   refreshTokenSchema, logoutSchema, forgotPasswordSchema, resetPasswordSchema,
 } = require('../validations/auth.validation');
 
+const uploadDir = path.join(__dirname, '../../uploads/profile-pics');
+fs.mkdirSync(uploadDir, { recursive: true });
+const storage = multer.diskStorage({
+  destination: uploadDir,
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`)
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed'))
+    }
+    cb(null, true)
+  },
+});
+
 // ── Public routes ─────────────────────────────────────────────────────────────
 router.post('/send-otp',        otpLimiter,  validate(sendOTPSchema),        sendOTP);
 router.post('/verify-otp',      otpLimiter,  validate(verifyOTPSchema),      verifyOTP);
-router.post('/register',        authLimiter, validate(registerSchema),        register);
+router.post('/register',        authLimiter, upload.single('profilePic'), validate(registerSchema), register);
 router.post('/login',           authLimiter, validate(loginSchema),           login);
 router.post('/refresh',                      validate(refreshTokenSchema),    refreshToken);
 router.post('/logout',                       validate(logoutSchema),          logout);

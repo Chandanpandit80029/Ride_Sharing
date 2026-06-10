@@ -22,6 +22,11 @@ const sendOTPService = async (email, name, purpose = 'email verification') => {
     throw appError(`Only @${allowed} email addresses are allowed`, 400);
   }
 
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    throw appError('This email is already registered. Please login or use a different email.', 409);
+  }
+
   // Remove any pending OTPs for this email to enforce one-at-a-time
   await prisma.oTP.deleteMany({ where: { email } });
 
@@ -74,7 +79,7 @@ const verifyOTPService = async (email, otp) => {
  * Register enforces that a VerifiedEmail row exists and is not expired.
  * This prevents anyone calling /register without first going through /verify-otp.
  */
-const registerService = async ({ name, rollNo, email, phone, password }) => {
+const registerService = async ({ name, rollNo, email, phone, password, profilePic }) => {
   if (!isAllowedDomain(email)) {
     throw appError('Only college email addresses are allowed', 400);
   }
@@ -110,8 +115,17 @@ const registerService = async ({ name, rollNo, email, phone, password }) => {
   // ── Create user + tokens in a transaction ─────────────────────────────────
   const { user, tokens } = await prisma.$transaction(async (tx) => {
     const newUser = await tx.user.create({
-      data  : { name, rollNo, email, phone: phone || null, password: hashedPassword, domain, isVerified: true },
-      select: { id: true, name: true, email: true, rollNo: true, domain: true, phone: true },
+      data  : {
+        name,
+        rollNo,
+        email,
+        phone: phone || null,
+        password: hashedPassword,
+        profilePic: profilePic ? `/uploads/profile-pics/${profilePic}` : null,
+        domain,
+        isVerified: true,
+      },
+      select: { id: true, name: true, email: true, rollNo: true, domain: true, phone: true, profilePic: true },
     });
 
     const tokens = generateTokenPair({ id: newUser.id, email: newUser.email, domain: newUser.domain });
@@ -147,12 +161,13 @@ const loginService = async (email, password) => {
   });
 
   const safeUser = {
-    id    : user.id,
-    name  : user.name,
-    email : user.email,
-    rollNo: user.rollNo,
-    phone : user.phone,
-    domain: user.domain,
+    id        : user.id,
+    name      : user.name,
+    email     : user.email,
+    rollNo    : user.rollNo,
+    phone     : user.phone,
+    profilePic: user.profilePic || null,
+    domain    : user.domain,
   };
   return { user: safeUser, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
 };

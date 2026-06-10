@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express    = require('express');
 const http       = require('http');
+const path       = require('path');
 const { Server } = require('socket.io');
 const cors       = require('cors');
 const helmet     = require('helmet');
@@ -55,6 +56,7 @@ app.use(globalLimiter);
 // ─── Body parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ─── Request logging ──────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {

@@ -17,6 +17,7 @@ model User {
   email      String   @unique
   password   String
   phone      String?
+  profilePic String?
   domain     String
   isVerified Boolean  @default(false)
   createdAt  DateTime @default(now())
