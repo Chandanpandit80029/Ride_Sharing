@@ -33,14 +33,18 @@ const getProfile = async (req, res, next) => {
 
 // ─── PATCH /profile ───────────────────────────────────────────────────────────
 // Zod validation happens in route via validate(updateProfileSchema)
+const { uploadImage } = require('../utils/cloudinary.utils');
+
 const updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, profilePic } = req.body;
+    const { name, phone } = req.body;
     const updateData = {};
     if (name  !== undefined) updateData.name  = name;
     if (phone !== undefined) updateData.phone = phone; // null clears it
-    if (profilePic !== undefined) {
-      updateData.profilePic = `/uploads/profile-pics/${profilePic}`;
+
+    if (req.file) {
+      const uploadResult = await uploadImage(req.file);
+      updateData.profilePic = uploadResult.secure_url;
     }
 
     const user = await prisma.user.update({

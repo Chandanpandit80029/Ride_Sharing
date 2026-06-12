@@ -5,6 +5,7 @@ const { generateOTP, getOTPExpiry, isOTPExpired }  = require('../utils/otp.utils
 const { generateTokenPair, verifyRefreshToken }     = require('../utils/jwt.utils');
 const { extractDomain, isAllowedDomain }            = require('../utils/domain.utils');
 const { sendOTPEmail }                              = require('./email.service');
+const { uploadImage }                              = require('../utils/cloudinary.utils');
 const { BCRYPT_ROUNDS, VERIFIED_EMAIL_EXPIRY_MIN }  = require('../config/constants');
 
 // ─── Helper: throw an AppError ────────────────────────────────────────────────
@@ -79,7 +80,7 @@ const verifyOTPService = async (email, otp) => {
  * Register enforces that a VerifiedEmail row exists and is not expired.
  * This prevents anyone calling /register without first going through /verify-otp.
  */
-const registerService = async ({ name, rollNo, email, phone, password, profilePic }) => {
+const registerService = async ({ name, rollNo, email, phone, password, profilePicFile }) => {
   if (!isAllowedDomain(email)) {
     throw appError('Only college email addresses are allowed', 400);
   }
@@ -111,6 +112,7 @@ const registerService = async ({ name, rollNo, email, phone, password, profilePi
 
   const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
   const domain         = extractDomain(email);
+  const profilePicUrl  = profilePicFile ? (await uploadImage(profilePicFile)).secure_url : null;
 
   // ── Create user + tokens in a transaction ─────────────────────────────────
   const { user, tokens } = await prisma.$transaction(async (tx) => {
@@ -121,7 +123,7 @@ const registerService = async ({ name, rollNo, email, phone, password, profilePi
         email,
         phone: phone || null,
         password: hashedPassword,
-        profilePic: profilePic ? `/uploads/profile-pics/${profilePic}` : null,
+        profilePic: profilePicUrl,
         domain,
         isVerified: true,
       },

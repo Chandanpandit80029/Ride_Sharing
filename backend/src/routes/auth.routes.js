@@ -1,6 +1,4 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const multer = require('multer');
 const router  = express.Router();
 
@@ -16,15 +14,7 @@ const {
   refreshTokenSchema, logoutSchema, forgotPasswordSchema, resetPasswordSchema,
 } = require('../validations/auth.validation');
 
-const uploadDir = path.join(__dirname, '../../uploads/profile-pics');
-fs.mkdirSync(uploadDir, { recursive: true });
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname)
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`)
-  },
-});
+const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },

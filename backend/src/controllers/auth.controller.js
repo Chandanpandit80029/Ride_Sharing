@@ -28,7 +28,7 @@ const register = async (req, res, next) => {
   try {
     const registerPayload = {
       ...req.body,
-      profilePic: req.file?.filename,
+      profilePicFile: req.file,
     };
     const result = await registerService(registerPayload);
     sendSuccess(res, 201, 'Account created successfully', result);
