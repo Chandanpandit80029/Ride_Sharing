@@ -2,6 +2,7 @@ const {
   getMessages,
   sendMessage,
   getChatInfo,
+  createOrOpenChat,
 } = require('../services/chat.service');
 const { sendSuccess }      = require('../utils/response.utils');
 const { sendMessageSchema } = require('../validations/request.validation');
@@ -47,4 +48,50 @@ const sendMessageHandler = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-module.exports = { getChatInfoHandler, getMessagesHandler, sendMessageHandler };
+/**
+ * POST /chats/create-or-open
+ * Body: { rideId }
+ *
+ * Looks up the accepted request for the current user + ride,
+ * finds or creates the chat, and returns the chat info + requestId.
+ * This removes the dependency on passing requestId through multiple screens.
+ */
+const createOrOpenChatHandler = async (req, res, next) => {
+  try {
+    const { rideId } = req.body;
+    if (!rideId) {
+      return res.status(400).json({ success: false, message: 'rideId is required' });
+    }
+
+    const result = await createOrOpenChat(rideId, req.user.id);
+
+    // Broadcast chat_created event via Socket.io if new chat was created
+    if (result.wasCreated) {
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`user_${req.user.id}`).emit(SOCKET_EVENTS.CHAT_CREATED, {
+          requestId: result.requestId,
+          chatId: result.chatId,
+          rideId,
+        });
+        // Also notify the other participant
+        if (result.otherUserId) {
+          io.to(`user_${result.otherUserId}`).emit(SOCKET_EVENTS.CHAT_CREATED, {
+            requestId: result.requestId,
+            chatId: result.chatId,
+            rideId,
+          });
+        }
+      }
+    }
+
+    sendSuccess(res, 200, 'Chat opened successfully', result);
+  } catch (e) { next(e); }
+};
+
+module.exports = {
+  getChatInfoHandler,
+  getMessagesHandler,
+  sendMessageHandler,
+  createOrOpenChatHandler,
+};

@@ -41,7 +41,7 @@ const createRide = async (userId, domain, data) => {
  * Only shows rides belonging to the same college domain.
  * Excludes rides whose departure has already passed (isExpired = false AND departure > now).
  * Supports filters: from, to, date, vehicleType.
- * Marks each ride with isOwner and userRequestStatus.
+ * Marks each ride with isOwner, userRequestStatus, and userRequestId.
  */
 const getRides = async (domain, filters = {}, userId) => {
   const { from, to, date, vehicleType, page = 1, limit = 10 } = filters;
@@ -86,19 +86,23 @@ const getRides = async (domain, filters = {}, userId) => {
   // Filter out rides whose exact departure time has passed
   const rides = allRides.filter((r) => !isRideExpired(r.date, r.time));
 
-  // Enrich with current user's request status for each ride
+  // Enrich with current user's request status and request ID for each ride
   const userRequests = await prisma.request.findMany({
     where : { requesterId: userId },
-    select: { rideId: true, status: true },
+    select: { id: true, rideId: true, status: true },
   });
-  const requestMap = new Map(userRequests.map((r) => [r.rideId, r.status]));
+  const requestMap = new Map(userRequests.map((r) => [r.rideId, { status: r.status, id: r.id }]));
 
-  const enrichedRides = rides.map((ride) => ({
-    ...ride,
-    isFull           : ride.availableSeats === 0 || ride.isFull,
-    isOwner          : ride.createdById === userId,
-    userRequestStatus: requestMap.get(ride.id) || null,
-  }));
+  const enrichedRides = rides.map((ride) => {
+    const userReq = requestMap.get(ride.id);
+    return {
+      ...ride,
+      isFull           : ride.availableSeats === 0 || ride.isFull,
+      isOwner          : ride.createdById === userId,
+      userRequestStatus: userReq?.status || null,
+      userRequestId    : userReq?.id || null,
+    };
+  });
 
   return {
     rides     : enrichedRides,
@@ -107,7 +111,12 @@ const getRides = async (domain, filters = {}, userId) => {
 };
 
 // ─── Get Ride By ID ───────────────────────────────────────────────────────────
-const getRideById = async (rideId, domain) => {
+/**
+ * Fetches a single ride by ID, enriched with:
+ *  - Accepted participants (requests)
+ *  - Current user's request status and requestId (if they have one)
+ */
+const getRideById = async (rideId, domain, userId) => {
   const ride = await prisma.ride.findFirst({
     where  : { id: rideId, domain },
     include: {
@@ -116,10 +125,24 @@ const getRideById = async (rideId, domain) => {
         where  : { status: 'ACCEPTED' },
         include: { requester: { select: { id: true, name: true, rollNo: true } } },
       },
+      _count   : { select: { requests: { where: { status: 'ACCEPTED' } } } },
     },
   });
   if (!ride) throw appError('Ride not found', 404);
-  return { ...ride, isFull: ride.availableSeats === 0 || ride.isFull };
+
+  // Find current user's request for this ride
+  const userRequest = await prisma.request.findFirst({
+    where: { rideId, requesterId: userId },
+    select: { id: true, status: true },
+  });
+
+  return {
+    ...ride,
+    isFull           : ride.availableSeats === 0 || ride.isFull,
+    isOwner          : ride.createdById === userId,
+    userRequestStatus: userRequest?.status || null,
+    userRequestId    : userRequest?.id || null,
+  };
 };
 
 // ─── Delete Ride ──────────────────────────────────────────────────────────────

@@ -30,7 +30,7 @@ const getMyRidesHandler = async (req, res, next) => {
 
 const getRideByIdHandler = async (req, res, next) => {
   try {
-    const ride = await getRideById(req.params.id, req.user.domain);
+    const ride = await getRideById(req.params.id, req.user.domain, req.user.id);
     sendSuccess(res, 200, 'Ride details fetched', { ride });
   } catch (e) { next(e); }
 };

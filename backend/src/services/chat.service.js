@@ -94,4 +94,66 @@ const getChatInfo = async (requestId, userId) => {
   };
 };
 
-module.exports = { getChatByRequestId, getMessages, sendMessage, getChatInfo };
+// ─── Create or Open Chat (by rideId) ──────────────────────────────────────────
+/**
+ * Given a rideId and userId:
+ * 1. Finds the accepted request where userId is a participant.
+ * 2. If a chat already exists, returns it.
+ * 3. If no chat exists, creates one.
+ * 4. Returns requestId, chatId, and whether it was newly created.
+ *
+ * This endpoint removes the dependency on passing requestId through multiple screens.
+ */
+const createOrOpenChat = async (rideId, userId) => {
+  // Find the accepted request for this ride where user is a participant
+  const request = await prisma.request.findFirst({
+    where: {
+      rideId,
+      status: 'ACCEPTED',
+      OR: [
+        { requesterId: userId },
+        { rideCreatorId: userId },
+      ],
+    },
+    include: { chat: true },
+  });
+
+  if (!request) {
+    throw appError('No accepted request found for this ride. You are not a participant.', 404);
+  }
+
+  // Determine the other participant's user ID
+  const otherUserId = request.requesterId === userId
+    ? request.rideCreatorId
+    : request.requesterId;
+
+  // If chat already exists, return it
+  if (request.chat) {
+    return {
+      requestId: request.id,
+      chatId: request.chat.id,
+      wasCreated: false,
+      otherUserId,
+    };
+  }
+
+  // Create a new chat for this request
+  const chat = await prisma.chat.create({
+    data: { requestId: request.id },
+  });
+
+  return {
+    requestId: request.id,
+    chatId: chat.id,
+    wasCreated: true,
+    otherUserId,
+  };
+};
+
+module.exports = {
+  getChatByRequestId,
+  getMessages,
+  sendMessage,
+  getChatInfo,
+  createOrOpenChat,
+};

@@ -3,10 +3,14 @@ const router  = express.Router();
 
 const {
   getChatInfoHandler, getMessagesHandler, sendMessageHandler,
+  createOrOpenChatHandler,
 } = require('../controllers/chat.controller');
 const { protect } = require('../middleware/auth.middleware');
 
 router.use(protect);
+
+// POST /chats/create-or-open      — creates or returns existing chat by rideId (no requestId needed)
+router.post('/create-or-open',     createOrOpenChatHandler);
 
 // GET  /chats/:requestId          — chat metadata (participants, ride info)
 router.get('/:requestId',          getChatInfoHandler);

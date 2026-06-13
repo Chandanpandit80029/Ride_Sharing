@@ -38,5 +38,9 @@ module.exports = {
     ERROR            : 'error',
     NEW_REQUEST      : 'new_request',    // notify ride owner of a new request
     REQUEST_STATUS   : 'request_status', // notify requester of status change
+    CHAT_CREATED     : 'chat_created',   // notify both participants when a chat is created
+    REQUEST_CREATED  : 'request_created', // notify ride owner of new request
+    REQUEST_ACCEPTED : 'request_accepted', // notify requester of acceptance
+    REQUEST_REJECTED : 'request_rejected', // notify requester of rejection
   },
 };
